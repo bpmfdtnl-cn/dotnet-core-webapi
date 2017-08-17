@@ -1,0 +1,184 @@
+﻿code first 约定配置
+
+主键：KEY
+
+Data Annotations：通过Key关键字来标识一个主键
+
+[Key]
+public int DestinationId { get; set; }
+Fluent API：
+
+复制代码
+public class BreakAwayContext : DbContext
+    {
+        public DbSet<Destination> Destinations { get; set; }
+        public DbSet<Lodging> Lodgings { get; set; }
+
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            //Fluent API
+            modelBuilder.Entity<Destination>().HasKey(d => d.DestinationId);
+            base.OnModelCreating(modelBuilder);
+        }
+    } 
+复制代码
+外键
+
+Data Annotations：
+
+        public int DestinationId { get; set; }
+        [ForeignKey("DestinationId")]
+        public Destination Destination { get; set; }
+注意，指定列名存在，如上面的DestinationId，则类中必须存在名称为DestinationId的属性。
+
+Fluent API：
+
+modelBuilder.Entity<Lodging>().HasRequired(p => p.Destination).WithMany(p=>p.Lodgings).HasForeignKey(p => p.DestinationId);
+长度
+
+Data Annotations：通过StringLength(长度),MinLength(最小长度),MaxLength(最大长度)来设置数据库中字段的长度。
+
+        [MinLength(10),MaxLength(30)]
+        public string Name { get; set; }
+        [StringLength(30)]
+        public string Country { get; set; }
+Fluent API：没有设置最小长度这个方法。
+
+modelBuilder.Entity<Destination>().Property(p => p.Name).HasMaxLength(30);
+            modelBuilder.Entity<Destination>().Property(p => p.Country).HasMaxLength(30);
+非空
+
+Data Annotations：用Required来标识，还可以设置是否可允许空字符串，显示错误消息等。
+
+        [Required]
+        public string Country { get; set; }
+        [Required(ErrorMessage="请输入描述")]
+        public string Description { get; set; }
+Fluent API:
+
+modelBuilder.Entity<Destination>().Property(p => p.Country).IsRequired();
+数据类型
+
+Data Annotations：TypeName
+
+//将string映射成ntext，默认为nvarchar(max)
+        [Column(TypeName = "ntext")]
+        public string Owner { get; set; }
+Fluent API:
+
+modelBuilder.Entity<Lodging>().Property(p => p.Owner).HasColumnType("ntext");
+表名
+
+Data Annotations：Table
+
+复制代码
+[Table("MyLodging")]
+    public class Lodging
+    {
+        public int LodgingId { get; set; }
+        public string Name { get; set; }
+        public string Owner { get; set; }    
+        public decimal Price { get; set; }
+        public bool IsResort { get; set; }
+        public Destination Destination { get; set; }
+
+    } 
+复制代码
+Fluent API:
+
+modelBuilder.Entity<Lodging>().ToTable("MyLodging");
+列名
+
+Data Annotations：Column
+
+[Column("MyName")]
+public string Name { get; set; }
+Fluent API:
+
+modelBuilder.Entity<Lodging>().Property(p => p.Name).HasColumnName("MyName");
+自增长
+
+如果主键是int类型，EF为默认设置为增长。但如果是GUID类型，则要显示的设置自增长。
+
+Data Annotations：DatabaseGenerated
+
+复制代码
+  public class Person
+    {
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public Guid SocialId { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+    }
+复制代码
+看看创建数据的脚本，会加一句
+
+ALTER TABLE [dbo].[People] ADD  DEFAULT (newid()) FOR [SocialId]
+Fluent API:
+
+modelBuilder.Entity<Person>().Property(p => p.SocialId).HasDatabaseGeneratedOption(DatabaseGeneratedOption.Identity);
+忽略列映射
+
+类中有些属性，特别是一些通过计算或合并列得出的结果，我们并不需要其记录到数据库中，就可以通过配置不让它生成在数据库中。
+
+Data Annotations：NotMapped
+
+复制代码
+        [NotMapped]
+        public string Name
+        {
+            get 
+            {
+                return FirstName + " " + LastName;
+            }
+        }
+复制代码
+Fluent API:NotMapped
+
+modelBuilder.Entity<Person>().Ignore(p => p.Name);
+忽略表映射
+
+对于不需要映射到数据库中的表，我们也可以取消其映射。
+
+Data Annotations：
+
+复制代码
+ [NotMapped]
+    public class Person
+    {
+        [Key]
+        public Guid SocialId { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+    }
+复制代码
+Fluent API:
+
+modelBuilder.Ignore<Person>();
+时间戳
+
+时间戳只对数据类型为byte[]的属性有效，并且一个类中只能有一个设置为时间戳的属性。
+
+Data Annotations：Timestamp
+
+    [Timestamp]
+    public Byte[] TimeStamp { get; set; }
+Fluent API:
+
+modelBuilder.Entity<Lodging>().Property(p => p.TimeStamp).IsRowVersion();
+复杂类型
+
+Data Annotations：ComplexType
+
+ [ComplexType]
+    public class Address
+    {
+        public string Country { get; set; }
+        public string City { get; set; }
+    }
+Fluent API:
+
+modelBuilder.ComplexType<Address>();
+ 关于什么是复杂类型，可以参见：http://www.cnblogs.com/Gyoung/archive/2013/01/17/2864747.html
+
+ 
